@@ -13,6 +13,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.View;
@@ -24,6 +25,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
+
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
 
@@ -31,9 +38,10 @@ public class MainActivity extends AppCompatActivity {
     private ImageView imageView;
     private TextView textView;
     private Button button;
-
+    private String object;
     private String imagePath;
     private Classifier classifier;
+    static String to;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,7 +94,11 @@ public class MainActivity extends AppCompatActivity {
                     Classifier.Recognition recognition= results.get(0);
                     if (recognition != null) {
                         if (recognition.getTitle() != null)
-                            textView.setText(recognition.getTitle());
+                            object=recognition.getTitle();
+                            textView.setText(object);
+                            translate(object);
+
+
                     }
                 }
             }
@@ -94,6 +106,49 @@ public class MainActivity extends AppCompatActivity {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+
+    }
+    private void translate(final String word){
+
+        String from = "auto";//源语种 en 英语 zh 中文
+
+        if (word.length() == word.getBytes().length) {//成立则说明没有汉字，否则由汉字。
+            to = "zh"; //没有汉字 英译中
+        } else {
+            to = "en";//含有汉字 中译英
+        }
+        String appid = "20200919000568880";//appid 管理控制台有
+        String salt = (int) (Math.random() * 100 + 1) + "";//随机数 这里范围是[0,100]整数 无强制要求
+        String key = "aaFPFnqyDKUFp_T8ulHz";//密钥 管理控制台有
+        String string1 = appid + word + salt + key;// string1 = appid+q+salt+密钥
+        String sign = MD5Utils.getMD5Code(string1);// 签名 = string1的MD5加密 32位字母小写
+
+        Retrofit retrofitBaidu = new Retrofit.Builder()
+                .baseUrl("http://api.fanyi.baidu.com/api/trans/vip/translate/")
+                .addConverterFactory(GsonConverterFactory.create()) // 设置数据解析器
+                .build();
+        BaiduTranslateService baiduTranslateService = retrofitBaidu.create(BaiduTranslateService.class);
+
+
+        retrofit2.Call<RespondBean> call = baiduTranslateService.translate(word, from, to, appid, salt, sign);
+        call.enqueue(new Callback<RespondBean>() {
+            @Override
+            public void onResponse(retrofit2.Call<RespondBean> call, Response<RespondBean> response) {
+                //请求成功
+
+                RespondBean respondBean = response.body();//返回的JSON字符串对应的对象
+                String result = respondBean.getTrans_result().get(0).getDst();//获取翻译的字符串String
+                textView.setText(word + "\n" + result);
+
+            }
+
+            @Override
+            public void onFailure(Call<RespondBean> call, Throwable t) {
+                //请求失败 打印异常
+
+            }
+        });
     }
 
     private void  request_permissions() {
@@ -115,31 +170,6 @@ public class MainActivity extends AppCompatActivity {
                 }
 
         }
-//    @RequiresApi(api = Build.VERSION_CODES.M)
-//    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantresults){
-//        super.onRequestPermissionsResult(requestCode,permissions,grantresults);
-//        if(grantresults.length > 0){
-//            List<String> deniedlist = new ArrayList<>();
-//            for(int i = 0;i < grantresults.length;i++){
-//                if(grantresults[i]!= PackageManager.PERMISSION_GRANTED){
-//                    deniedlist.add(permissions[i]);
-//                }
-//            }
-//            if(!deniedlist.isEmpty()){
-//                for(String deniPermission : deniedlist){
-//                    boolean flag = shouldShowRequestPermissionRationale(deniPermission);
-//                    if(!flag){
-//                        permissionShouldShowRationale(deniedlist);
-//                        return;
-//                    }
-//                }
-//                permissionHasDenied(deniedlist);
-//            }
-//        }
-//    }
-//    private void permissionHasDenied(List<String> deniedList){
-//        if(listener != null){
-//            listener.onDenied(deniedList);
-//        }
-//    }
+
+
 }
