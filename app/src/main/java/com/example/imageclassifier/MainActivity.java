@@ -13,6 +13,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.telephony.TelephonyManager;
 import android.util.Log;
@@ -21,6 +22,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(resultCode, resultCode, data);
         RequestOptions options = new RequestOptions().skipMemoryCache(true).diskCacheStrategy(DiskCacheStrategy.NONE);
-
+        //调整图片角度
         int orientation = CameraUtil.getExifOrientation(imagePath);
         Log.d("orientation", orientation + ":degree");
 
@@ -89,7 +91,12 @@ public class MainActivity extends AppCompatActivity {
             classifier = Classifier.create(this, Classifier.Model.QUANTIZED_MOBILENET, Classifier.Device.CPU, 1);
             if (classifier != null) {
                 List<Classifier.Recognition> results = classifier.recognizeImage(bitmap, orientation);
-
+                File image = new File(imagePath);
+                try{
+                    image.delete();
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
                 if (results != null && results.size() > 0) {
                     Classifier.Recognition recognition= results.get(0);
                     if (recognition != null) {
